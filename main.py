@@ -14,7 +14,6 @@ db_client = pymongo.MongoClient('mongodb://trodis:Lgeji8tf@ds057000.mongolab.com
 
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
-    form = Ui_Dialog(bot_core(db_client, CONSUMER_KEY, CONSUMER_SECRET,
-        REQUEST_TOKEN_URL, ACCESS_TOKEN_URL, AUTHORIZE_URL))
+    form = Ui_MainWindow()
     form.show()
     sys.exit(app.exec_())
