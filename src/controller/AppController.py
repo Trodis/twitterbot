@@ -14,7 +14,7 @@ from twython import Twython, TwythonError, TwythonRateLimitError
 
 class AppController():
 
-    def __init__(db_client, CONSUMER_KEY, CONSUMER_SECRET, REQUEST_TOKEN_URL, 
+    def __init__(CONSUMER_KEY, CONSUMER_SECRET, REQUEST_TOKEN_URL, 
             ACCESS_TOKEN_URL, AUTHORIZE_URL):
         self.db_client = db_client
         self.CONSUMER_KEY = CONSUMER_KEY

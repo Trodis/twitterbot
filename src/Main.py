@@ -7,5 +7,6 @@ ACCESS_TOKEN_URL    = "https://api.twitter.com/oauth/access_token"
 AUTHORIZE_URL       = "https://api.twitter.com/oauth/authorize"
 
 if __name__ == "__main__":
-    app = Application()
+    app = Application(CONSUMER_KEY,CONSUMER_SECRET, 
+            REQUEST_TOKEN_URL, ACCESS_TOKEN_URL, AUTHORIZE_URL)
     app.run()

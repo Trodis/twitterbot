@@ -5,10 +5,16 @@ from PyQt4.QtGui import QMainWindow, QApplication
 from controller.AppController import AppController
 from view.MainWindow import Ui_MainWindow
 
+
 class Application(object):
 
-    def __init__(self):
-        pass
+    def __init__(self, ckey, csec, 
+            rtokenurl, atokenurl, authurl):
+        self.consumer_key = ckey
+        self.consumer_secret = csec
+        self.request_token_url = rtokenurl
+        self.access_token_url = atokenurl
+        self.authorize_url = authurl
 
     def setupModels(self):
         pass
@@ -17,7 +23,8 @@ class Application(object):
         pass
 
     def setupCtl(self):
-        #self.appctl = AppController(self)
+        self.appctl = AppController(self.consumer_key, self.consumer_secret,
+                self.request_token_url, self.access_token_url, self.authorize_url)
         pass
 
     def setupUi(self):
