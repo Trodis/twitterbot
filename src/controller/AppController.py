@@ -10,18 +10,21 @@ import md5
 
 import urlparse
 import oauth2 as oauth
+import configparser
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
 from twython import Twython, TwythonError, TwythonRateLimitError
 
 class AppController():
 
-    def __init__(CONSUMER_KEY, CONSUMER_SECRET, REQUEST_TOKEN_URL, 
-            ACCESS_TOKEN_URL, AUTHORIZE_URL):
-        self.db_client = db_client
+    def __init__(self, CONSUMER_KEY, CONSUMER_SECRET, REQUEST_TOKEN_URL, 
+            ACCESS_TOKEN_URL, AUTHORIZE_URL, mainWindow):
         self.CONSUMER_KEY = CONSUMER_KEY
         self.CONSUMER_SECRET = CONSUMER_SECRET
         self.REQUEST_TOKEN_URL = REQUEST_TOKEN_URL
         self.ACCESS_TOKEN_URL = ACCESS_TOKEN_URL
         self.AUTHORIZE_URL = AUTHORIZE_URL
+        self.mainWindow = mainWindow
 
     def main(self, listView):
         db = self.db_client.furkantweet
@@ -75,70 +78,10 @@ class AppController():
                 print e
                 sys.exit()
 
-    def getTwitterInstance(db, collection_names):
-        user_collection_exists = True
-        user_not_verified = True
-        while user_not_verified:
-            print "::Am System anmelden"
-            username = "twitteruser" 
-            if checkUsername(username, collection_names):
-                user_collection = db[username]
-                print " Benutzer wurde in der Datenbank gefunden!"
-                password = "qwertz123!"
-                print " Passwort wird geprüft..."
-                user_password_from_db = user_collection.find_one({"passwort":password})
-                if user_password_from_db:
-                    print " Passwort Korrekt!"
-                    user_not_verified = False
-                else:
-                    print " Passwort falsch!"
-            else:
-                print "::Neuen Benutzer anlegen"
-                print " Der Benutzer existiert nicht in der Datenbank," 
-                print " der Benutzer muss mit Passwort erst angelegt werden!...\n"
-                password = raw_input(" Passwort für diesen Benutzer?: ")
-                password2 = raw_input(" Paswort nocheinmal eingeben: ")
-                if password == password2:
-                    user_collection = db[username]
-                    user_collection.insert({"passwort":password})
-                    print " Neuer Benutzer wurde angelegt!"
-                    user_not_verified = False
-                else:
-                    print "Passwörter stimmen nicht überein!"
-                    continue
-            
-        user_collection = db[username]
-        option = "y"
-        while option != "q":
-            print "\n"
-            print "****Wähle eines der folgenden Optionen****"
-            print " [S]Bot starten [H]Account hinzufügen"
-            print "******************************************"
-            option = raw_input("::Option eingeben [S/H]: ")
-            if option == "S":
-                tokens = getOAuthToken(user_collection)
-                if tokens is not None:
-                    twitter = []
-                    for token in tokens:
-                        if "passwort" not in token:
-                            twitter.append(Twython(CONSUMER_KEY, CONSUMER_SECRET,
-                                token['oauth_token'], token['oauth_token_secret'] ))
-                    return twitter
-                else:
-                    continue
-            elif option == "H":
-                refire = True
-                while refire:
-                    addUserWithToken(raw_input("Twitter Benutzername: "), user_collection)
-                    if raw_input("\n::Weiteren hinzufügen?[y/n]:") == "y":
-                        refire = True
-                    else:
-                        refire = False
-            else:
-                print "Nur S oder H"
-        
-        sys.exit()
+    def addTwitterAccount(self):
+        url = getRequestToken()
 
+        
     def shuffleCursor(tweet_cursor):
         for i in range(random.randint(100, 1000)):
             tweet_cursor.next()
@@ -202,9 +145,61 @@ class AppController():
             access_token = dict(urlparse.parse_qsl(content))
             return access_token
 
-    def addUserWithToken(username, user_collection):
-        access_token = getRequestToken()
-        saveOAuthToken(access_token, username, user_collection)
+    def startAuthentication(self):
+        self.twitter_account_username = self.mainWindow.twitteraccountname_lineEdit.text().toUtf8()
+        if self.twitter_account_username:
+            self.consumer = oauth.Consumer(self.CONSUMER_KEY, self.CONSUMER_SECRET)
+            client = oauth.Client(self.consumer)
+            response, content = client.request(self.REQUEST_TOKEN_URL, "GET")
+            if response['status'] != '200':
+                raise Exception("Invalid response %s" %response['status'])
+            else:
+                self.request_token = dict(urlparse.parse_qsl(content))
+                url = "%s?oauth_token=%s" %(self.AUTHORIZE_URL, self.request_token['oauth_token']) 
+                self.mainWindow.webView.load(QUrl(url))      
+        else:
+            self.raiseErrorBox("You must specify a Twitter Username!")
+
+    def verifyPin(self):
+        try:
+            oauth_verifier_pin = str(self.mainWindow.pin_lineEdit.text())
+            try:
+                if self.twitter_account_username and oauth_verifier_pin.isdigit():
+                    request_token = self.request_token
+                    token = oauth.Token(request_token['oauth_token'],
+                            request_token['oauth_token_secret'])
+                    print oauth_verifier_pin
+                    token.set_verifier(oauth_verifier_pin)
+                    client = oauth.Client(self.consumer, token)
+                    response, content = client.request(self.ACCESS_TOKEN_URL, 'POST')
+                    access_token = dict(urlparse.parse_qsl(content))
+                else:
+                    self.raiseErrorBox("No Username specified! Or PIN is not digit!")
+                    return
+            except Exception as e:
+                self.raiseErrorBox("PIN was not accepted!")
+                print e
+                return
+        except Exception:
+            self.raiseErrorBox("PIN can only be numbers!")
+            return
+        
+        self.saveOAuthToken(self.twitter_account_username, access_token)
+            
+    def saveOAuthToken(self, twitter_account_username, access_token):
+        try:
+            twitter_accounts_file = open("twitter_accounts_file", 'w')
+        except IOError:
+            self.raiseErrorBox("File cannot be opened!")
+
+        config_parser = configparser.ConfigParser()
+        config_parser.add_section(twitter_account_username)
+        config_parser.set(str(twitter_account_username), 'oauth_token', access_token['oauth_token'])
+        config_parser.set(str(twitter_account_username), 'oauth_token_secret',
+                access_token['oauth_token_secret'])
+        config_parser.write(twitter_accounts_file)
+        twitter_accounts_file.close()
+
 
     def getOAuthToken(user_collection):
         if user_collection.count() > 1:
@@ -234,16 +229,5 @@ class AppController():
 
         return oauth_verifier
         
-    def saveOAuthToken(access_token, username, user_collection):
-        print "::Benutzer wird gespeichert..."
-        try:
-            if user_collection.find_one({"username": username}) is None:
-                user_collection.insert({"username":username, "oauth_token": access_token['oauth_token'],
-                    "oauth_token_secret": access_token['oauth_token_secret']})
-                print " Benutzer %s wurde gespeichert!" %username
-            else:
-                print " Der Benutzer %s existiert bereits in der Datenbank!" %username
-        except Exception as e:
-            print "==> Fehler!"
-            print " Speichern war nicht möglich!"
-            print e
+    def raiseErrorBox(self, text):
+        QMessageBox.critical(None, "Error", text, QMessageBox.Ok)

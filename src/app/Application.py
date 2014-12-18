@@ -18,14 +18,17 @@ class Application(object):
 
     def setupModels(self):
         pass
-
+        
     def setupSlot(self):
-        pass
+        self.ui_MainWindow.addtwitteraccount_btn.clicked.connect(
+                self.appctl.startAuthentication)
+        self.ui_MainWindow.verifypin_btn.clicked.connect(
+                self.appctl.verifyPin)
 
     def setupCtl(self):
         self.appctl = AppController(self.consumer_key, self.consumer_secret,
-                self.request_token_url, self.access_token_url, self.authorize_url)
-        pass
+                self.request_token_url, self.access_token_url,
+                self.authorize_url, self.ui_MainWindow)
 
     def setupUi(self):
         self.mainWindow = QMainWindow()
