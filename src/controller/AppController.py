@@ -25,6 +25,16 @@ class AppController():
         self.ACCESS_TOKEN_URL = ACCESS_TOKEN_URL
         self.AUTHORIZE_URL = AUTHORIZE_URL
         self.mainWindow = mainWindow
+        self.twitter_account_ini_name = 'twitter_accounts_file.ini'
+
+        try:
+            if not os.path.isfile(self.twitter_account_ini_name):
+                twitter_accounts_file = open(self.twitter_account_ini_name, 'w')
+                twitter_accounts_file.close()
+        except IOError:
+            self.raiseErrorBox("ini File could not be created!")
+        
+        self.populateAccountList()
 
     def main(self, listView):
         db = self.db_client.furkantweet
@@ -146,19 +156,25 @@ class AppController():
             return access_token
 
     def startAuthentication(self):
-        self.twitter_account_username = self.mainWindow.twitteraccountname_lineEdit.text().toUtf8()
-        if self.twitter_account_username:
+        self.twitter_account_username = str(self.mainWindow.twitteraccountname_lineEdit.text())
+        is_new_user = self.checkUser(self.twitter_account_username)
+        if is_new_user:
             self.consumer = oauth.Consumer(self.CONSUMER_KEY, self.CONSUMER_SECRET)
             client = oauth.Client(self.consumer)
             response, content = client.request(self.REQUEST_TOKEN_URL, "GET")
+
             if response['status'] != '200':
                 raise Exception("Invalid response %s" %response['status'])
             else:
                 self.request_token = dict(urlparse.parse_qsl(content))
                 url = "%s?oauth_token=%s" %(self.AUTHORIZE_URL, self.request_token['oauth_token']) 
                 self.mainWindow.webView.load(QUrl(url))      
+
+        elif is_new_user is None:
+            self.raiseErrorBox("Username cannot be empty!")
         else:
-            self.raiseErrorBox("You must specify a Twitter Username!")
+            self.raiseErrorBox("Twitter Username: '%s' already exists! Delete it first" %
+                    self.twitter_account_username)
 
     def verifyPin(self):
         try:
@@ -168,7 +184,6 @@ class AppController():
                     request_token = self.request_token
                     token = oauth.Token(request_token['oauth_token'],
                             request_token['oauth_token_secret'])
-                    print oauth_verifier_pin
                     token.set_verifier(oauth_verifier_pin)
                     client = oauth.Client(self.consumer, token)
                     response, content = client.request(self.ACCESS_TOKEN_URL, 'POST')
@@ -187,19 +202,93 @@ class AppController():
         self.saveOAuthToken(self.twitter_account_username, access_token)
             
     def saveOAuthToken(self, twitter_account_username, access_token):
+        twitter_accounts_file = self.getTwitterAccountsFile()
         try:
-            twitter_accounts_file = open("twitter_accounts_file", 'w')
+            config_parser = configparser.SafeConfigParser()
+            config_parser.add_section(str(twitter_account_username))
+            config_parser.set(str(twitter_account_username), 'oauth_token',
+                    access_token['oauth_token'])
+            config_parser.set(str(twitter_account_username), 'oauth_token_secret',
+                    access_token['oauth_token_secret'])
+            config_parser.write(twitter_accounts_file)
+            twitter_accounts_file.close()
+
+            self.mainWindow.twitteraccounts_listWidget.addItem(twitter_account_username)
+            self.raiseInfoBox("OK! Token was saved!")
+        except KeyError:
+            self.raiseErrorBox("PIN was wrong, or token timed out!")
+    
+    def getTwitterAccountsFile(self):
+        try:
+            twitter_accounts_file = open(self.twitter_account_ini_name, 'a')
+            return twitter_accounts_file
         except IOError:
             self.raiseErrorBox("File cannot be opened!")
 
-        config_parser = configparser.ConfigParser()
-        config_parser.add_section(twitter_account_username)
-        config_parser.set(str(twitter_account_username), 'oauth_token', access_token['oauth_token'])
-        config_parser.set(str(twitter_account_username), 'oauth_token_secret',
-                access_token['oauth_token_secret'])
-        config_parser.write(twitter_accounts_file)
-        twitter_accounts_file.close()
+    def populateAccountList(self):
+        config_parser = configparser.SafeConfigParser()
+        config_parser.read(self.twitter_account_ini_name)
+        sections = config_parser.sections()
+        if sections:
+            for section in sections:
+                self.mainWindow.twitteraccounts_listWidget.addItem(section)
+        else:
+            self.raiseInfoBox("No Twitter Accounts found! You have to add at least one")
 
+    def updateAccountName(self, old_name, new_name):
+        twitter_accounts_file = self.getTwitterAccountsFile()
+        config_parser = configparser.SafeConfigParser()
+        config_parser.read(self.twitter_account_ini_name)
+        token = config_parser.get(old_name, 'oauth_token')
+        token_secret = config_parser.get(old_name, 'oauth_token_secret')
+
+        if config_parser.remove_section(old_name):
+            config_parser.add_section(new_name)
+            config_parser.set(new_name, 'oauth_token', token)
+            config_parser.set(new_name, 'oauth_token_secret', token_secret)
+            config_parser.write(twitter_accounts_file)
+            twitter_accounts_file.close()
+        else:
+            self.raiseErrorBox("Ini File could not be updated!")
+    
+    def deleteAccount(self):
+        user_name = str(self.mainWindow.twitteraccounts_listWidget.currentItem().text())
+
+        #twitter_accounts_file = self.getTwitterAccountsFile()
+        config_parser = configparser.SafeConfigParser()
+        config_parser.read(self.twitter_account_ini_name)
+        if config_parser.remove_section(user_name):
+            self.saveIniFile(self.twitter_account_ini_name, config_parser)
+            self.raiseInfoBox("User has been deleted")
+        else:
+            self.raiseErrorBox("User could not be deleted!")
+
+    def saveIniFile(self, ini_file_name, config_parser):
+        with open(ini_file_name, 'wb') as configfile:
+            config_parser.write(configfile)
+
+
+    def editUserName(self):
+        current_name = self.mainWindow.twitteraccounts_listWidget.currentItem()
+        if current_name:
+            new_name, ok = QInputDialog.getText(None, "Enter new Name", "Enter new Name")
+            if ok and (len(new_name) !=0):
+                self.updateAccountName(str(current_name.text()), str(new_name))
+                current_name.setText(new_name)
+        else:
+            self.raiseErrorBox("The List is empty!")
+        
+    def checkUser(self, twitter_account_username):
+        config_parser = configparser.SafeConfigParser()
+        config_parser.read(self.twitter_account_ini_name)
+        if twitter_account_username:
+            if config_parser.has_section(twitter_account_username):
+                return False
+            else:
+                return True
+        else:
+            return None
+        
 
     def getOAuthToken(user_collection):
         if user_collection.count() > 1:
@@ -231,3 +320,6 @@ class AppController():
         
     def raiseErrorBox(self, text):
         QMessageBox.critical(None, "Error", text, QMessageBox.Ok)
+
+    def raiseInfoBox(self, text):
+        QMessageBox.information(None, "Info", text, QMessageBox.Ok)
