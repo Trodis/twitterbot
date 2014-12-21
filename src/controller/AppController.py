@@ -91,7 +91,6 @@ class AppController():
     def addTwitterAccount(self):
         url = getRequestToken()
 
-        
     def shuffleCursor(tweet_cursor):
         for i in range(random.randint(100, 1000)):
             tweet_cursor.next()
@@ -116,7 +115,6 @@ class AppController():
             return True
         else:
             return False
-
 
     def getAccountName(twitter):
         try:
@@ -236,7 +234,6 @@ class AppController():
             self.raiseInfoBox("No Twitter Accounts found! You have to add at least one")
 
     def updateAccountName(self, old_name, new_name):
-        twitter_accounts_file = self.getTwitterAccountsFile()
         config_parser = configparser.SafeConfigParser()
         config_parser.read(self.twitter_account_ini_name)
         token = config_parser.get(old_name, 'oauth_token')
@@ -246,22 +243,22 @@ class AppController():
             config_parser.add_section(new_name)
             config_parser.set(new_name, 'oauth_token', token)
             config_parser.set(new_name, 'oauth_token_secret', token_secret)
-            config_parser.write(twitter_accounts_file)
-            twitter_accounts_file.close()
+            self.saveIniFile(self.twitter_account_ini_name, config_parser)
+            self.raiseInfoBox("Ok Edits were saved")
         else:
             self.raiseErrorBox("Ini File could not be updated!")
     
     def deleteAccount(self):
-        user_name = str(self.mainWindow.twitteraccounts_listWidget.currentItem().text())
-
-        #twitter_accounts_file = self.getTwitterAccountsFile()
         config_parser = configparser.SafeConfigParser()
         config_parser.read(self.twitter_account_ini_name)
-        if config_parser.remove_section(user_name):
-            self.saveIniFile(self.twitter_account_ini_name, config_parser)
-            self.raiseInfoBox("User has been deleted")
-        else:
-            self.raiseErrorBox("User could not be deleted!")
+        for item in self.mainWindow.twitteraccounts_listWidget.selectedItems():
+            current_item = self.mainWindow.twitteraccounts_listWidget.row(item)
+            user_name = str(self.mainWindow.twitteraccounts_listWidget.takeItem(current_item).text())
+            if config_parser.remove_section(user_name):
+                self.saveIniFile(self.twitter_account_ini_name, config_parser)
+                self.raiseInfoBox("User has been deleted")
+            else:
+                self.raiseErrorBox("User could not be deleted!")
 
     def saveIniFile(self, ini_file_name, config_parser):
         with open(ini_file_name, 'wb') as configfile:
