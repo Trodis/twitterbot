@@ -88,70 +88,11 @@ class AppController():
                 print e
                 sys.exit()
 
-    def addTwitterAccount(self):
-        url = getRequestToken()
-
-    def shuffleCursor(tweet_cursor):
-        for i in range(random.randint(100, 1000)):
-            tweet_cursor.next()
-        return tweet_cursor
-
-    def sendTweet(twitter, text):
-        for user in twitter:
-            try:
-                user.update_status(status=text)
-                time.sleep(2)
-            except TwythonError as e:
-                print "\n::Fehler beim Senden!\n Status Code: %s" %user._last_call["status_code"]
-                print " Betroffener Account: %s" %getAccountName(user)
-                print " Tweet Nachricht wird übersprungen...\n"
-                return False
-        print "\n::Tweet mit allen Accounts gesendet!"
-
-        return True
-
     def checkUsername(username, collection_names):
         if username in collection_names:
             return True
         else:
             return False
-
-    def getAccountName(twitter):
-        try:
-            return twitter.verify_credentials()['name']
-        except TwythonRateLimitError, e:
-            print "\n::Fehler"
-            print " Limit Erreicht!"
-            print " %s" %e
-            print " Schlafen für 15min!"
-            startSleep(60*15)
-            return
-
-    def startSleep(seconds):
-        while seconds > 0:
-            print "\r Countdown: %i Sek." %seconds,
-            sys.stdout.flush()
-            seconds -= 1
-            time.sleep(1)
-        print "\n"
-
-    def getRequestToken():
-        consumer = oauth.Consumer(CONSUMER_KEY, CONSUMER_SECRET)
-        client = oauth.Client(consumer)
-        response, content = client.request(REQUEST_TOKEN_URL, "GET")
-        if response['status'] != '200':
-            return None
-            raise Exception("Invalid response %s" %response['status'])
-        else:
-            request_token = dict(urlparse.parse_qsl(content))
-            oauth_verifier = getPinFromUser(request_token)
-            token = oauth.Token(request_token['oauth_token'],
-                request_token['oauth_token_secret'])
-            token.set_verifier(oauth_verifier)
-            client = oauth.Client(consumer, token)
-            response, content = client.request(ACCESS_TOKEN_URL, "POST")
-            access_token = dict(urlparse.parse_qsl(content))
-            return access_token
 
     def startAuthentication(self):
         self.twitter_account_username = str(self.mainWindow.twitteraccountname_lineEdit.text())
@@ -194,13 +135,12 @@ class AppController():
                 print e
                 return
         except Exception:
-            self.raiseErrorBox("PIN can only be numbers!")
+            self.raiseErrorBox("PIN accepts numbers!")
             return
         
         self.saveOAuthToken(self.twitter_account_username, access_token)
             
     def saveOAuthToken(self, twitter_account_username, access_token):
-        twitter_accounts_file = self.getTwitterAccountsFile()
         try:
             config_parser = configparser.SafeConfigParser()
             config_parser.add_section(str(twitter_account_username))
@@ -208,13 +148,11 @@ class AppController():
                     access_token['oauth_token'])
             config_parser.set(str(twitter_account_username), 'oauth_token_secret',
                     access_token['oauth_token_secret'])
-            config_parser.write(twitter_accounts_file)
-            twitter_accounts_file.close()
-
+            self.saveIniFile(self.twitter_account_ini_name, config_parser)
             self.mainWindow.twitteraccounts_listWidget.addItem(twitter_account_username)
             self.raiseInfoBox("OK! Token was saved!")
         except KeyError:
-            self.raiseErrorBox("PIN was wrong, or token timed out!")
+            self.raiseErrorBox("PIN was wrong, or Authentication timed out!")
     
     def getTwitterAccountsFile(self):
         try:
@@ -244,7 +182,7 @@ class AppController():
             config_parser.set(new_name, 'oauth_token', token)
             config_parser.set(new_name, 'oauth_token_secret', token_secret)
             self.saveIniFile(self.twitter_account_ini_name, config_parser)
-            self.raiseInfoBox("Ok Edits were saved")
+            self.raiseInfoBox("Ok! Edits were saved")
         else:
             self.raiseErrorBox("Ini File could not be updated!")
     
@@ -254,6 +192,7 @@ class AppController():
         for item in self.mainWindow.twitteraccounts_listWidget.selectedItems():
             current_item = self.mainWindow.twitteraccounts_listWidget.row(item)
             user_name = str(self.mainWindow.twitteraccounts_listWidget.takeItem(current_item).text())
+      
             if config_parser.remove_section(user_name):
                 self.saveIniFile(self.twitter_account_ini_name, config_parser)
                 self.raiseInfoBox("User has been deleted")
@@ -263,7 +202,6 @@ class AppController():
     def saveIniFile(self, ini_file_name, config_parser):
         with open(ini_file_name, 'wb') as configfile:
             config_parser.write(configfile)
-
 
     def editUserName(self):
         current_name = self.mainWindow.twitteraccounts_listWidget.currentItem()
@@ -285,36 +223,7 @@ class AppController():
                 return True
         else:
             return None
-        
-
-    def getOAuthToken(user_collection):
-        if user_collection.count() > 1:
-            return user_collection.find()
-        else:
-            print "==> Fehler!"
-            print " Die Datenbank hat noch keine Twitter Account"
-            print " Es muss erst ein Twitter Account hinzugefügt werden"
-            return None
-
-    def getPinFromUser(request_token):
-        print "*************Du musst diese Anwednung verifizieren*********************"
-        print "    Kopiere dazu den unten aufgeführten Link einfach in deinen Browser"
-        print "    Autorisiere die App und geb die PIN unten ein"
-        print "***********************************************************************"
-        print "::Zu kopierender Link\n %s?oauth_token=%s" %(AUTHORIZE_URL,
-            request_token['oauth_token'])
-
-        is_not_digit = True
-        while is_not_digit: 
-            oauth_verifier = raw_input(' Den PIN hier eingeben!: ')
-            if oauth_verifier.isdigit():
-                print " OK! PIN wird geprüft..."
-                is_not_digit = False
-            else:
-                print "Die PIN kann nur aus Zahlen bestehen, versuchs nocheinmal!"
-
-        return oauth_verifier
-        
+       
     def raiseErrorBox(self, text):
         QMessageBox.critical(None, "Error", text, QMessageBox.Ok)
 
