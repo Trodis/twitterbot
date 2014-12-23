@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-  
 import sys
-
 from PyQt4.QtGui import QMainWindow, QApplication, QMessageBox
 from controller.AppController import AppController
 from view.MainWindow import Ui_MainWindow
+
 
 class Application(object):
 
@@ -27,8 +27,6 @@ class Application(object):
                 self.appctl.verifyPin)
 
         #Twitter Account ListWidget
-        self.ui_MainWindow.edit_btn.clicked.connect(
-                self.appctl.editUserName)
         self.ui_MainWindow.remove_btn.clicked.connect(
                 self.appctl.deleteAccount)
 

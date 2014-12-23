@@ -128,9 +128,6 @@ class Ui_MainWindow(object):
         self.remove_btn = QtGui.QPushButton(self.groupBox_8)
         self.remove_btn.setObjectName(_fromUtf8("remove_btn"))
         self.verticalLayout_10.addWidget(self.remove_btn)
-        self.edit_btn = QtGui.QPushButton(self.groupBox_8)
-        self.edit_btn.setObjectName(_fromUtf8("edit_btn"))
-        self.verticalLayout_10.addWidget(self.edit_btn)
         self.horizontalLayout_8.addWidget(self.groupBox_8)
         self.groupBox_10 = QtGui.QGroupBox(self.settings_tab)
         self.groupBox_10.setObjectName(_fromUtf8("groupBox_10"))
@@ -218,7 +215,6 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow", None))
-        self.tabWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><br/></p></body></html>", None))
         self.groupBox.setTitle(_translate("MainWindow", "Tweets", None))
         self.groupBox_2.setTitle(_translate("MainWindow", "Log", None))
         self.groupBox_3.setTitle(_translate("MainWindow", "Hashtag", None))
@@ -233,7 +229,6 @@ class Ui_MainWindow(object):
         self.groupBox_8.setTitle(_translate("MainWindow", "Twitter Accounts", None))
         self.removeall_btn.setText(_translate("MainWindow", "Remove all", None))
         self.remove_btn.setText(_translate("MainWindow", "Remove", None))
-        self.edit_btn.setText(_translate("MainWindow", "Edit", None))
         self.groupBox_10.setTitle(_translate("MainWindow", "Mongo Database", None))
         self.savedatabase_btn.setText(_translate("MainWindow", "Save Database", None))
         self.groupBox_7.setTitle(_translate("MainWindow", "Tweet Text File", None))
