@@ -43,15 +43,39 @@ class AppController():
         self.ACCESS_TOKEN_URL = ACCESS_TOKEN_URL
         self.AUTHORIZE_URL = AUTHORIZE_URL
         self.mainWindow = mainWindow
+        # Names of the .ini Files
         self.twitter_account_ini_name = 'TwitterAccounts.ini'
         self.settings_ini_name = 'BotConfig.ini' 
+        
+        # BotConfig.ini Section Names
+        self.bot_ini_mongo_section = 'Mongo'
+        self.bot_ini_text_file_section = 'Text File'
+        self.bot_ini_tweet_source_section = 'Tweet Source'
+        self.bot_ini_timing_section = 'Timing'
 
+        # BotConfig.ini Mongo Section options
+        self.bot_ini_uri = None 
+        self.bot_ini_database = None 
+
+        # BotConfig.ini Text File options
+        self.bot_ini_path = None 
+
+        # BotConfig.ini Tweet Source Section options
+        self.bot_ini_use_database = None
+        self.bot_ini_use_textfile = None
+
+        # BotConfig.ini Timing Section options
+        self.bot_ini_delay_accounts = None
+        self.bot_ini_delay_acconts = None
+        
         
         #Create the Twitter Account .ini file if it doesnt exist
         try:
             if not os.path.isfile(self.twitter_account_ini_name):
                 twitter_accounts_file = open(self.twitter_account_ini_name, 'w')
                 twitter_accounts_file.close()
+            else:
+                self.populateAccountList()
         except IOError:
             self.raiseErrorBox("%s could not be created!") %self.twitter_account_ini_name
        
@@ -60,23 +84,24 @@ class AppController():
                 settings_ini_file = open(self.settings_ini_name, 'w')
                 settings_ini_file.close()
                 self.setDefaultSettings()
+            else:
+                self.setUserSettings()
         except IOError:
             self.raiseErrorBox("%s could not be created!") %self.settings_ini_name
         
-        self.populateAccountList()
     
     def setDefaultSettings(self):
         config_parser = configparser.SafeConfigParser()
 
-        config_parser.add_section('Mongo')
-        config_parser.add_section('Text File')
-        config_parser.add_section('Tweet Source')
-        config_parser.add_section('Timing')
+        config_parser.add_section(self.bot_ini_mongo_section)
+        config_parser.add_section(self.bot_ini_text_file_section)
+        config_parser.add_section(self.bot_ini_tweet_source_section)
+        config_parser.add_section(self.bot_ini_timing_section)
         
-        config_parser.set('Mongo', 'uri', '')
-        config_parser.set('Mongo', 'database', '')
+        config_parser.set(self.bot_ini_mongo_section, self.bot_ini_uri)
+        config_parser.set(self.bot_ini_mongo_section, self.bot_ini, self.bot_ini_database)
         
-        config_parser.set('Text File', 'path', '')
+        config_parser.set(self.bot_ini_text_file_section, self.bot_ini_path, '')
         
         config_parser.set('Tweet Source', 'use_database', 'False')
         config_parser.set('Tweet Source', 'use_text_file', 'True')
@@ -194,6 +219,14 @@ class AppController():
                 return True
         else:
             return None
+    
+    def setiniURI(self):
+        config_parser = configparser.SafeConfigParser()
+        db_uri = str(self.mainWindow.databaseuri_lineEdit.text())
+        db_name = str(self.mainWindow.database_lineEdit.text())
+
+        config_parser.read(self.settings_ini_name)
+        config.set(
 
     def raiseErrorBox(self, text):
         QMessageBox.critical(None, "Error", text, QMessageBox.Ok)
