@@ -54,19 +54,26 @@ class AppController():
         self.bot_ini_timing_section = 'Timing'
 
         # BotConfig.ini Mongo Section options
-        self.bot_ini_uri = None 
-        self.bot_ini_database = None 
+        self.bot_ini_uri = 'uri'
+        self.bot_ini_database = 'database'
+        self.bot_ini_uri_value = 'None'
+        self.bot_ini_database_value = 'None'
 
         # BotConfig.ini Text File options
-        self.bot_ini_path = None 
+        self.bot_ini_path = 'path'
+        self.bot_ini_path_value = 'None'
 
         # BotConfig.ini Tweet Source Section options
-        self.bot_ini_use_database = None
-        self.bot_ini_use_textfile = None
+        self.bot_ini_use_database = 'use_database'
+        self.bot_ini_use_textfile = 'use_textfile'
+        self.bot_ini_use_database_value = 'false'
+        self.bot_ini_use_textfile_value = 'true'
 
         # BotConfig.ini Timing Section options
-        self.bot_ini_delay_accounts = None
-        self.bot_ini_delay_acconts = None
+        self.bot_ini_delay_accounts = 'delay_accounts'
+        self.bot_ini_delay_accounts_value = '0:1'
+        self.bot_ini_delay_single_tweet = 'delay_single_tweet'
+        self.bot_ini_delay_single_tweet_value = '0:1' 
         
         
         #Create the Twitter Account .ini file if it doesnt exist
@@ -83,33 +90,85 @@ class AppController():
             if not os.path.isfile(self.settings_ini_name):
                 settings_ini_file = open(self.settings_ini_name, 'w')
                 settings_ini_file.close()
-                self.setDefaultSettings()
+                self.setIniToDefaultSettings()
             else:
-                self.setUserSettings()
+                self.setAttributestoUserSettings()
         except IOError:
             self.raiseErrorBox("%s could not be created!") %self.settings_ini_name
         
-    
-    def setDefaultSettings(self):
+     
+    def setIniToDefaultSettings(self):
+        """
+        If the .ini File is created the first time, we will set the 
+        default Settings which we get from the class Attributes specified in __init__
+        """
         config_parser = configparser.SafeConfigParser()
-
+        
+        # Adding the necessary sections first
         config_parser.add_section(self.bot_ini_mongo_section)
         config_parser.add_section(self.bot_ini_text_file_section)
         config_parser.add_section(self.bot_ini_tweet_source_section)
         config_parser.add_section(self.bot_ini_timing_section)
+       
+        # Mongo DB Section Options
+        config_parser.set(self.bot_ini_mongo_section, self.bot_ini_uri,self.bot_ini_uri_value)
+        config_parser.set(self.bot_ini_mongo_section, self.bot_ini_database,
+                self.bot_ini_database_value)
         
-        config_parser.set(self.bot_ini_mongo_section, self.bot_ini_uri)
-        config_parser.set(self.bot_ini_mongo_section, self.bot_ini, self.bot_ini_database)
+        # Text File Section Options
+        config_parser.set(self.bot_ini_text_file_section, self.bot_ini_path,
+                self.bot_ini_path_value)
+       
+        # Tweet Source Section Options
+        config_parser.set(self.bot_ini_tweet_source_section, self.bot_ini_use_textfile,
+                self.bot_ini_use_textfile_value)
+        config_parser.set(self.bot_ini_tweet_source_section, self.bot_ini_use_database,
+                self.bot_ini_use_database_value)
         
-        config_parser.set(self.bot_ini_text_file_section, self.bot_ini_path, '')
-        
-        config_parser.set('Tweet Source', 'use_database', 'False')
-        config_parser.set('Tweet Source', 'use_text_file', 'True')
-
-        config_parser.set('Timing', 'delay_accounts', '1')
-        config_parser.set('Timing', 'single_tweet', '2')
+        # Timing Section Options
+        config_parser.set(self.bot_ini_timing_section, self.bot_ini_delay_accounts,
+                self.bot_ini_delay_accounts_value)
+        config_parser.set(self.bot_ini_timing_section, self.bot_ini_delay_single_tweet,
+                self.bot_ini_delay_single_tweet_value)
 
         self.saveIniFile(self.settings_ini_name, config_parser)
+        self.setGUISettings()
+
+    def setGUISettings(self):
+        # Set Tweet Source GUI Radio Buttons
+        self.mainWindow.usedatabase_radio.setChecked(bool(self.bot_ini_use_database_value))
+        self.mainWindow.usetextfile_radio.setChecked(bool(self.bot_ini_use_textfile_value))
+
+        # Set Timing GUI Values
+        delay_accounts_value_min, delay_accounts_value_sec = \
+            self.bot_ini_delay_accounts_value.split(':')
+
+        self.mainWindow.delaybetweenaccounts_timeEdit.setTime(QTime(0,
+            int(delay_accounts_value_min), int(delay_accounts_value_sec)))
+
+        delay_single_tweet_value_min, delay_single_tweet_value_sec = \
+                self.bot_ini_delay_single_tweet_value.split(':')
+
+        self.mainWindow.delayaftertweet_timeEdit.setTime(QTime(0, int(delay_single_tweet_value_min),
+                int(delay_single_tweet_value_sec)))
+
+    def setAttributestoUserSettings(self):
+        config_parser = configparser.SafeConfigParser()
+        config_parser.read(self.settings_ini_name)
+
+        self.bot_ini_use_textfile_value = config_parser.get(self.bot_ini_tweet_source_section,
+                self.bot_ini_use_textfile)
+
+        self.bot_ini_use_database_value = config_parser.get(self.bot_ini_tweet_source_section,
+                self.bot_ini_use_database)
+        
+        self.bot_ini_delay_accounts_value = config_parser.get(self.bot_ini_timing_section,
+                self.bot_ini_delay_accounts)
+
+        self.bot_ini_delay_single_tweet_value = config_parser.get(self.bot_ini_timing_section,
+                self.bot_ini_delay_single_tweet)
+        
+        self.setGUISettings()
 
     def main(self, listView):
         db = self.db_client.furkantweet
@@ -224,9 +283,14 @@ class AppController():
         config_parser = configparser.SafeConfigParser()
         db_uri = str(self.mainWindow.databaseuri_lineEdit.text())
         db_name = str(self.mainWindow.database_lineEdit.text())
+        
+        if db_uri and db_name:
+            config_parser.read(self.settings_ini_name)
+            config.set(self.bot_ini_mongo_section, self.db_uri, db_uri)
+            config.set(self.bot_ini_mongo_section, self.db_name, db_name)
+        else:
+            self.raiseErrorBox("Database Options can not be empty")
 
-        config_parser.read(self.settings_ini_name)
-        config.set(
 
     def raiseErrorBox(self, text):
         QMessageBox.critical(None, "Error", text, QMessageBox.Ok)
