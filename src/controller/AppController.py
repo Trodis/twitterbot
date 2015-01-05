@@ -56,12 +56,12 @@ class AppController():
         # BotConfig.ini Mongo Section options
         self.bot_ini_uri = 'uri'
         self.bot_ini_database = 'database'
-        self.bot_ini_uri_value = 'None'
-        self.bot_ini_database_value = 'None'
+        self.bot_ini_uri_value = ''
+        self.bot_ini_database_value = ''
 
         # BotConfig.ini Text File options
         self.bot_ini_path = 'path'
-        self.bot_ini_path_value = 'None'
+        self.bot_ini_path_value = ''
 
         # BotConfig.ini Tweet Source Section options
         self.bot_ini_use_database = 'use_database'
@@ -151,6 +151,13 @@ class AppController():
 
         self.mainWindow.delayaftertweet_timeEdit.setTime(QTime(0, int(delay_single_tweet_value_min),
                 int(delay_single_tweet_value_sec)))
+
+        # Set Database GUI Values
+        self.mainWindow.databaseuri_lineEdit.setText(self.bot_ini_uri_value)
+        self.mainWindow.database_lineEdit.setText(self.bot_ini_database_value)
+
+        # Set Textfile path GUI Value
+        self.mainWindow.filename_lineEdit.setText(self.bot_ini_path_value)
 
     def setAttributestoUserSettings(self):
         config_parser = configparser.SafeConfigParser()
@@ -278,8 +285,8 @@ class AppController():
                 return True
         else:
             return None
-    
-    def setiniURI(self):
+
+    def setiniDatabase(self):
         config_parser = configparser.SafeConfigParser()
         db_uri = str(self.mainWindow.databaseuri_lineEdit.text())
         db_name = str(self.mainWindow.database_lineEdit.text())
@@ -288,9 +295,14 @@ class AppController():
             config_parser.read(self.settings_ini_name)
             config.set(self.bot_ini_mongo_section, self.db_uri, db_uri)
             config.set(self.bot_ini_mongo_section, self.db_name, db_name)
+            self.saveIniFile(self.settings_ini_name, config_parser)
         else:
             self.raiseErrorBox("Database Options can not be empty")
-
+    
+    def setiniSource(self):
+        config_parser = configparser.SafeConfigParser()
+        self.bot_ini_use_database_value =  
+        self.bot_ini_use_textfile_value = 
 
     def raiseErrorBox(self, text):
         QMessageBox.critical(None, "Error", text, QMessageBox.Ok)

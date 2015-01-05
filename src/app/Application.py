@@ -21,10 +21,21 @@ class Application(object):
     def setupSlot(self):
         self.ui_MainWindow.actionQuit.triggered.connect(
                 self.closeEvent)
+
         self.ui_MainWindow.addtwitteraccount_btn.clicked.connect(
                 self.appctl.startAuthentication)
+
         self.ui_MainWindow.verifypin_btn.clicked.connect(
                 self.appctl.verifyPin)
+        
+        self.ui_MainWindow.savedatabase_btn.clicked.connect(
+                self.appctl.setiniDatabase)
+
+        self.ui_MainWindow.savesource_btn.clicked.connect(
+                self.appctl.setiniSource)
+
+        self.ui_MainWindow.savetiming_btn.clicked.connect(
+                self.appctl.setiniTiming)
 
         #Twitter Account ListWidget
         self.ui_MainWindow.remove_btn.clicked.connect(
