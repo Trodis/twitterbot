@@ -105,7 +105,16 @@ class AppController():
             self.raiseErrorBox("%s could not be created!") %self.settings_ini_name
         
     
-    def 
+    def startTweeting(self):
+        twython_user_instances = self.getTwitterUserList()
+        while self.continue_tweeting:
+            tweet = self.getNextTweet()
+            for user in twython_user_instances:
+                user.update_status(status=tweet)
+
+    def stopTweeting(self):
+        self.continue_tweeting = False
+
     def setIniToDefaultSettings(self):
         """
         If the .ini File is created the first time, we will set the 
@@ -178,6 +187,10 @@ class AppController():
         self.bot_ini_database_value = config_parser.get(self.bot_ini_mongo_section,
                 self.bot_ini_database)
 
+        # Set Tweet Text File Path
+        self.bot_ini_path_value = config_parser.get(self.bot_ini_text_file_section,
+                self.bot_ini_path)
+
         # Set Tweet Source Attributes from INI File
         self.bot_ini_use_textfile_value = config_parser.getboolean(self.bot_ini_tweet_source_section,
                 self.bot_ini_use_textfile)
@@ -192,6 +205,7 @@ class AppController():
         self.bot_ini_delay_single_tweet_value = config_parser.get(self.bot_ini_timing_section,
                 self.bot_ini_delay_single_tweet)
         
+
         # GUI should always set to the correct settings
         self.setGUISettings()
 
@@ -315,6 +329,16 @@ class AppController():
                 self.bot_ini_database_value)
         self.saveIniFile(self.settings_ini_name, config_parser)
     
+    def setTextFilePath(self):
+        self.tweets_text_file_name = str(QFileDialog.getOpenFileName(None, 'Open File', ''))
+        self.mainWindow.filename_lineEdit.setText(self.tweets_text_file_name)
+
+        config_parser = configparser.SafeConfigParser()
+        config_parser.read(self.settings_ini_name)
+        config_parser.set(self.bot_ini_text_file_section, self.bot_ini_path,
+                self.tweets_text_file_name)
+        self.saveIniFile(self.settings_ini_name, config_parser)
+
     def setiniSource(self):
         self.bot_ini_use_database_value = self.mainWindow.usedatabase_radio.isChecked() 
         self.bot_ini_use_textfile_value = self.mainWindow.usetextfile_radio.isChecked()
@@ -346,6 +370,20 @@ class AppController():
                 self.bot_ini_delay_single_tweet_value)
 
         self.saveIniFile(self.settings_ini_name, config_parser)
+    
+    def getTwitterUserList(self):
+        twitter_user = []
+        config_parser = configparser.SafeConfigParser()
+        config_parser.read(self.twitter_account_ini_name)
+        for section in config_parser.sections():
+            twitter_user.append(Twython(self.CONSUMER_KEY, self.CONSUMER_SECRET,
+                config_parser.get(section, 'oauth_token'),
+                config_parser.get(section, 'oauth_token_secret')))
+        
+        return twitter_user
+    
+    def getNextTweet(self):
+        pass
 
     def raiseErrorBox(self, text):
         QMessageBox.critical(None, "Error", text, QMessageBox.Ok)

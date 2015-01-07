@@ -21,15 +21,24 @@ class Application(object):
     def setupSlot(self):
         self.ui_MainWindow.actionQuit.triggered.connect(
                 self.closeEvent)
+        # Main Tab in GUI
+        self.ui_MainWindow.start_btn.clicked.connect(
+                self.appctl.startTweeting)
+        
+        self.ui_MainWindow.stop_btn.clicked.connect(
+                self.appctl.stopTweeting)
 
         self.ui_MainWindow.addtwitteraccount_btn.clicked.connect(
                 self.appctl.startAuthentication)
 
         self.ui_MainWindow.verifypin_btn.clicked.connect(
                 self.appctl.verifyPin)
-        
+       
         self.ui_MainWindow.savedatabase_btn.clicked.connect(
                 self.appctl.setiniDatabase)
+        
+        self.ui_MainWindow.openfile_btn.clicked.connect(
+                self.appctl.setTextFilePath)
 
         self.ui_MainWindow.savesource_btn.clicked.connect(
                 self.appctl.setiniSource)
