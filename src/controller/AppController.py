@@ -16,6 +16,15 @@ from PyQt4.QtGui import *
 from PyQt4.QtWebKit import *
 from twython import Twython, TwythonError, TwythonRateLimitError
 
+class WorkThread(QThread):
+    def __init__(self, function):
+        QThread.__init__(self)
+        self.function = function
+
+    def run(self):
+        self.function()
+        return
+        
 
 class AppController():
 
@@ -82,7 +91,9 @@ class AppController():
         self.bot_ini_delay_accounts_value = '0:1'
         self.bot_ini_delay_single_tweet = 'delay_single_tweet'
         self.bot_ini_delay_single_tweet_value = '0:1' 
-        
+
+        self.continue_tweeting = False
+        self.tweeting_thread = None        
         # Create the TwitterAccounts.ini file if it doesnt exist
         try:
             if not os.path.isfile(self.twitter_account_ini_name):
@@ -104,16 +115,84 @@ class AppController():
         except IOError:
             self.raiseErrorBox("%s could not be created!") %self.settings_ini_name
         
-    
-    def startTweeting(self):
-        twython_user_instances = self.getTwitterUserList()
-        while self.continue_tweeting:
-            tweet = self.getNextTweet()
-            for user in twython_user_instances:
-                user.update_status(status=tweet)
+    def runBot(self):
+        if self.bot_ini_use_textfile_value:
+            self.tweeting_thread = WorkThread(self.tweetWithTextFile)
+            self.tweeting_thread.start()
+        else:
+            self.tweeting_thread = WorkThread(self.tweetWithDatabase)
+            self.tweeting_thread.start()
 
-    def stopTweeting(self):
-        self.continue_tweeting = False
+    def stopBot(self):
+        self.tweeting_thread.terminate()
+
+    def tweetWithTextFile(self):
+        twython_user_instances = self.getTwitterUserList()
+        hashtag = self.mainWindow.hashtag_lineEdit.text()
+        tweets_list = []
+        with open(self.bot_ini_path_value, 'r') as tweets_file:
+            tweets_list = tweets_file.read().splitlines()
+        
+        successful_tweets = 0
+        failed_tweets = 0
+        for counter, tweet in enumerate(tweets_list):
+            tweet_text = '%s %s' %(tweet.decode('UTF-8'), hashtag)
+            success = self.sendTweet(twython_user_instances, tweet_text, counter+1)
+            if success:
+                successful_tweets += 1
+            else:
+                failed_tweets +=1
+        self.startSleep("::All Accounts Tweeted sleeping", self.bot_ini_delay_accounts_value)
+        log_summary = "::Tweet Nr: %i\nSuccessful send: %i\nFailed to send: %i" %(counter+1,
+                successful_tweets, failed_tweets)
+        self.mainWindow.logs_textBrowser.append(log_summary)
+
+    def tweetWithDatabase(self):
+        twython_user_instances = self.getTwitterUserList()
+        hashtag = self.mainWindow.hashtag_lineEdit.text()
+        db_client = pymongo.MongoClient(self.bot_ini_uri_value)
+        db_name, collection_name = self.bot_ini_database_value.split(':')
+        db = db_client[db_name]
+        tweet_collection = db[collection_name]
+        tweet_collection_cursor = tweet_collection.find()
+        
+        successful_tweets = 0
+        failed_tweets = 0
+        for counter, tweet in enumerate(tweet_collection_cursor):
+            tweet_text = '%s %s' %(tweet['tweet'], hashtag)
+            info = "::Sending Tweet Nr. %i\n%s" %(counter+1, tweet_text)
+            self.mainWindow.tweet_textBrowser.append(info)
+            success = self.sendTweet(twython_user_instances, tweet_text, counter+1)
+            if success:
+                successful_tweets += 1
+            else:
+                failed_tweets += 1
+
+            self.startSleep("::All Accounts Tweeted sleeping", self.bot_ini_delay_accounts_value)
+            log_summary = "::Tweet Nr: %i\nSuccessful send: %i\nFailed to send: %i" %(counter+1,
+                    successful_tweets, failed_tweets)
+            self.mainWindow.logs_textBrowser.append(log_summary)
+
+
+    def sendTweet(self, twython_user_instances, tweet_text, tweet_number):
+        for user in twython_user_instances:
+            try:
+                user.update_status(status=tweet_text)
+            except TwythonError as e:
+                log_error = "::Error sending Tweet Nr. %i!\nStatus Code: %s\n Exception: %s" % \
+                        (tweet_number, user._last_call['status_code'], e)
+                self.mainWindow.logs_textBrowser.append(log_error)
+                return False
+        return True
+
+    def startSleep(self, message, ttw):
+        minutes, seconds = ttw.split(':')
+        total_seconds = (int(minutes)*60) + int(seconds)
+        log = "%s: %i sec." %(message, total_seconds)
+        self.mainWindow.logs_textBrowser.append(log)
+        while total_seconds > 0:
+            total_seconds -= 1
+            time.sleep(1)
 
     def setIniToDefaultSettings(self):
         """
@@ -208,14 +287,6 @@ class AppController():
 
         # GUI should always set to the correct settings
         self.setGUISettings()
-
-    def main(self, listView):
-        db = self.db_client.furkantweet
-        listView.append("Hallo Welt")
-        collection_names = db.collection_names()
-        tweet_collection = db.generaltweets
-        twitter_instance = self.getTwitterInstance(db, collection_names)
-        self.fireBot(listView, twitter_instance, tweet_collection)
 
     def startAuthentication(self):
         self.twitter_account_username = str(self.mainWindow.twitteraccountname_lineEdit.text())
@@ -382,9 +453,6 @@ class AppController():
         
         return twitter_user
     
-    def getNextTweet(self):
-        pass
-
     def raiseErrorBox(self, text):
         QMessageBox.critical(None, "Error", text, QMessageBox.Ok)
 

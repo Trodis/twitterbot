@@ -23,10 +23,10 @@ class Application(object):
                 self.closeEvent)
         # Main Tab in GUI
         self.ui_MainWindow.start_btn.clicked.connect(
-                self.appctl.startTweeting)
+                self.appctl.runBot)
         
         self.ui_MainWindow.stop_btn.clicked.connect(
-                self.appctl.stopTweeting)
+                self.appctl.stopBot)
 
         self.ui_MainWindow.addtwitteraccount_btn.clicked.connect(
                 self.appctl.startAuthentication)
