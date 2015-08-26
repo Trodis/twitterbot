@@ -17,15 +17,13 @@ from PyQt4.QtWebKit import *
 from twython import Twython, TwythonError, TwythonRateLimitError
 
 class WorkThread(QThread):
-    def __init__(self, function):
+    mysignal = pyqtSignal()
+    def __init__(self):
         QThread.__init__(self)
-        self.function = function
-
     def run(self):
-        self.function()
+        self.mysignal.emit()
         return
         
-
 class AppController():
 
     """
@@ -54,6 +52,7 @@ class AppController():
         self.AUTHORIZE_URL = AUTHORIZE_URL
 
         self.mainWindow = mainWindow
+
 
         """
         Setting the Class Attributes with default settings
@@ -117,7 +116,8 @@ class AppController():
         
     def runBot(self):
         if self.bot_ini_use_textfile_value:
-            self.tweeting_thread = WorkThread(self.tweetWithTextFile)
+            self.tweeting_thread = WorkThread()
+            self.tweeting_thread.mysignal.connect(self.tweetWithTextFile)
             self.tweeting_thread.start()
         else:
             self.tweeting_thread = WorkThread(self.tweetWithDatabase)
@@ -137,15 +137,19 @@ class AppController():
         failed_tweets = 0
         for counter, tweet in enumerate(tweets_list):
             tweet_text = '%s %s' %(tweet.decode('UTF-8'), hashtag)
+            info = "::Sending Tweet Nr. %i\n%s" %(counter+1, tweet_text)
+            self.mainWindow.tweet_textBrowser.append(info)
             success = self.sendTweet(twython_user_instances, tweet_text, counter+1)
             if success:
                 successful_tweets += 1
             else:
                 failed_tweets +=1
+            qApp.processEvents()
         self.startSleep("::All Accounts Tweeted sleeping", self.bot_ini_delay_accounts_value)
         log_summary = "::Tweet Nr: %i\nSuccessful send: %i\nFailed to send: %i" %(counter+1,
                 successful_tweets, failed_tweets)
         self.mainWindow.logs_textBrowser.append(log_summary)
+        qApp.processEvents()
 
     def tweetWithDatabase(self):
         twython_user_instances = self.getTwitterUserList()

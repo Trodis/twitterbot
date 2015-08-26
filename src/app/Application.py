@@ -3,6 +3,7 @@ import sys
 from PyQt4.QtGui import QMainWindow, QApplication, QMessageBox
 from controller.AppController import AppController
 from view.MainWindow import Ui_MainWindow
+from PyQt4.QtCore import *
 
 
 class Application(object):
